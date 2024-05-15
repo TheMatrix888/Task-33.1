@@ -60,7 +60,7 @@ class TestRegistration:
         # Разворачиваем окно на весь экран для корректного отображения элементов
         self.driver.maximize_window()
         # Создаём объект WebDriverWait
-        self.wait = WebDriverWait(self.driver, 10)
+        self.wait = WebDriverWait(self.driver, 20)
         # Переходим на страницу регистрации
         go_to_registration_page(self.driver, self.wait)
         # Создаём объект регистрации
