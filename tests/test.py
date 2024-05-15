@@ -1,63 +1,129 @@
-def test_login_by_phone(web_driver, phone, password):
-    page = AuthPage(web_driver)
-    page.open_auth_page()
-    # Ввод номера телефона
-    page.enter_phone(phone)
-    # Ввод пароля
-    page.enter_pass(password)
-    # Нажатие кнопки "Войти"
-    page.btn_click()
-    # Находим элемент изображения капчи
-    captcha_image_element = web_driver.find_element(AuthLocators.AUTH_CAPTCHA_IMG)
-    # Получаем значение атрибута src изображения капчи
-    captcha_image_url = captcha_image_element.get_attribute('src')
-    # Ожидаем, пока изображение капчи загрузится
-    WebDriverWait(web_driver, 10).until(EC.presence_of_element_located(AuthLocators.AUTH_CAPTCHA_IMG))
-    # Если изображение капчи отображается и доступно для взаимодействия, вызываем функцию для ее решения
-    if captcha_image_element.is_displayed() and captcha_image_element.is_enabled():
-        page_url = web_driver.current_url  # URL текущей страницы
-        captcha_text = page.solve_captcha(captcha_image_url, page_url)
+from app.config import VALID_NAME, VALID_LAST_NAME, VALID_EMAIL, VALID_PASSWORD
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from app.registration import Registration
 
-        # Находим элемент поля ввода капчи
-        captcha_input_element = web_driver.find_element(AuthLocators.AUTH_CAPTCHA_INPUT)
 
-        # Вводим текст капчи в поле ввода
-        captcha_input_element.send_keys(captcha_text)
+@pytest.fixture(scope="function", params=[
+    ("", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("а", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("аа", None),
+    ("а" * 30, None),
+    ("а" * 31, "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("а" * 255, "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("а" * 1001, "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("12345", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("Vasya", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("意志自由", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    (r"!@#$%^&*()_-+=\/", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    (VALID_NAME, None),
+])
+def param_name(request):
+    return request.param
 
-        # Нажимаем кнопку "Подтвердить"
-        captcha_input_element.submit()
 
-    # Ожидание пока произойдет авторизация
-    WebDriverWait(web_driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, '.user-name')))
+@pytest.fixture(scope="function", params=[
+    ("", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("а", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("аа", None),
+    ("а" * 30, None),
+    ("а" * 31, "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("а" * 255, "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("а" * 1001, "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("12345", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("Vasya", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    ("意志自由", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    (r"!@#$%^&*()_-+=\/", "Необходимо заполнить поле кириллицей. От 2 до 30 символов."),
+    (VALID_LAST_NAME, None),
+])
+def param_last_name(request):
+    return request.param
 
-    # Проверка что авторизация прошла успешно
-    assert web_driver.find_element(*AuthLocators.AUTH_USER_NAME).text == 'Коздринь\nРоман Романович'
 
-И метод   @allure.step("Решение капчи")
-    def solve_captcha(self, captcha_image_url, page_url):
-        """
-        Решает капчу с помощью сервиса 2captcha.
-        :param captcha_image_url: Ссылка на изображение капчи.
-        :param page_url: URL текущей страницы.
-        :return: Текст, введенный в капчу.
-        """
-        api_key = "bda49f557a8791280e7b07845df733d4"
+def go_to_registration_page(driver, wait):
+    # Переходим на страницу авторизации
+    driver.get("https://b2c.passport.rt.ru/")
+    # Ждём пока страница загрузится
+    wait.until(EC.presence_of_element_located((By.ID, "kc-register")))
+    # Нажимаем "Зарегистрироваться"
+    driver.find_element(By.ID, "kc-register").click()
 
-        # Отправляем запрос на распознавание капчи
-        captcha_url = f"http://2captcha.com/in.php?key={api_key}&method=base64&body={captcha_image_url}&pageurl={page_url}"
-        response = requests.get(captcha_url)
-        captcha_id = response.json().get("request")
-        if not captcha_id:
-            raise Exception("Не удалось получить ID капчи")
 
-        # Ожидаем, пока капча будет распознана
-        time.sleep(10)
+class TestRegistration:
+    def setup_class(self):
+        # Создаём объект webdriver
+        self.driver = webdriver.Chrome()
+        # Разворачиваем окно на весь экран для корректного отображения элементов
+        self.driver.maximize_window()
+        # Создаём объект WebDriverWait
+        self.wait = WebDriverWait(self.driver, 10)
+        # Переходим на страницу регистрации
+        go_to_registration_page(self.driver, self.wait)
+        # Создаём объект регистрации
+        self.registration = Registration
 
-        # Получаем результат распознавания капчи
-        captcha_url = f"http://2captcha.com/res.php?key={api_key}&action=get&id={captcha_id}"
-        response = requests.get(captcha_url)
-        captcha_text = response.json().get("request")
-        if not captcha_text:
-            raise Exception("Не удалось распознать капчу")
+    def test_name(self, param_name):
+        # Берём имя и ошибку, которая должна появиться при вводе невалидного имени
+        # при expected_error = None - имя валидное, ошибки не ожидается
+        (name, expected_error) = param_name
 
-        return captcha_text
+        # Вводим данные в форму
+        self.registration.fill_form(self, name, VALID_LAST_NAME, VALID_EMAIL, VALID_PASSWORD)
+
+        # Если регистрация должна пройти успешно
+        if expected_error is None:
+            try:
+                assert self.driver.find_element(By.ID, "card-title").text == "Подтверждение email"
+            except NoSuchElementException:
+                # Ожидали заголовок "Подтверждение email", но элемента не оказалось на странице, тест не пройден
+                assert False
+            finally:
+                # Возвращаемся к странице регистрации
+                go_to_registration_page(self.driver, self.wait)
+            # Если поля содержат некорректные данные, которые должны вызывать ошибку
+        else:
+            try:
+                assert self.driver.find_element(By.XPATH, "//*[@id=\"page-right\"]/div/div[1]/div/form/div[1]/div[1]/span").text == expected_error
+            except NoSuchElementException:
+                # Ожидали ошибку, но её элемента не оказалось на странице, тест не пройден
+                assert False
+            finally:
+                # Перезагружаем страницу, чтобы очистить поля
+                self.driver.refresh()
+
+    def test_last_name(self, param_last_name):
+        # Берём фамилию и ошибку, которая должна появиться при вводе невалидной фамилии
+        # при expected_error = None - фамилия валидная, ошибки не ожидается
+        (last_name, expected_error) = param_last_name
+
+        # Вводим данные в форму
+        self.registration.fill_form(self, VALID_NAME, last_name, VALID_EMAIL, VALID_PASSWORD)
+
+        # Если регистрация должна пройти успешно
+        if expected_error is None:
+            try:
+                assert self.driver.find_element(By.ID, "card-title").text == "Подтверждение email"
+            except NoSuchElementException:
+                # Ожидали заголовок "Подтверждение email", но элемента не оказалось на странице, тест не пройден
+                assert False
+            finally:
+                # Возвращаемся к странице регистрации
+                go_to_registration_page(self.driver, self.wait)
+        # Если поля содержат некорректные данные, которые должны вызывать ошибку
+        else:
+            try:
+                assert self.driver.find_element(By.XPATH, "//*[@id=\"page-right\"]/div/div[1]/div/form/div[1]/div[2]/span").text == expected_error
+            except NoSuchElementException:
+                # Ожидали ошибку, но её элемента не оказалось на странице, тест не пройден
+                assert False
+            finally:
+                # Перезагружаем страницу, чтобы очистить поля
+                self.driver.refresh()
+
+    def teardown_class(self):
+        # После прохождения всех тестов закрываем webdriver
+        self.driver.quit()
