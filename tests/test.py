@@ -77,6 +77,7 @@ class TestRegistration:
         # Если регистрация должна пройти успешно
         if expected_error is None:
             try:
+                self.wait.until(EC.presence_of_element_located((By.ID, "card-title")))
                 assert self.driver.find_element(By.ID, "card-title").text == "Подтверждение email"
             except NoSuchElementException:
                 # Ожидали заголовок "Подтверждение email", но элемента не оказалось на странице, тест не пройден
@@ -106,6 +107,7 @@ class TestRegistration:
         # Если регистрация должна пройти успешно
         if expected_error is None:
             try:
+                self.wait.until(EC.presence_of_element_located((By.ID, "card-title")))
                 assert self.driver.find_element(By.ID, "card-title").text == "Подтверждение email"
             except NoSuchElementException:
                 # Ожидали заголовок "Подтверждение email", но элемента не оказалось на странице, тест не пройден
